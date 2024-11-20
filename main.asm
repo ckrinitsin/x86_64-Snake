@@ -37,6 +37,8 @@ section .text
     extern reset_cursor
     extern move_cursor_right
     extern move_cursor_down
+    extern hide_cursor
+    extern show_cursor
     global _start 
     global exit
 
@@ -87,6 +89,7 @@ _move_up:
     ret
 
 _start:
+    call hide_cursor
     mov byte [snake], 5
     mov byte [snake+1], 5
 
@@ -106,6 +109,7 @@ main_loop:
     jmp main_loop
 
 exit: ; exit syscall with return code 0
+    call show_cursor
     mov rax, 60                     
     xor rdi, rdi                    
     syscall                         

@@ -42,6 +42,6 @@ read_input:
     mov rax, 0           
     mov rdi, 0           
     mov rsi, input_buffer
-    mov rdx, 1          
+    mov rdx, 250          
     syscall
     ret

@@ -11,6 +11,9 @@ section .data
     right_cursor db 0x1B , '[C', 0
     right_cursor_len equ $ - right_cursor
 
+    hide_cursor_code db 0x1B, '[', '?', '2', '5', 'l', 0  ; Escape sequence to hide the cursor
+    show_cursor_code db 0x1B, '[', '?', '2', '5', 'h', 0  ; Escape sequence to show the cursor
+
 section .bss
     ; adress for syscall for write_byte wrapper
     byte_to_write resb 1
@@ -21,6 +24,32 @@ section .text
     global move_cursor_right
     global move_cursor_down
     global reset_cursor
+    global hide_cursor
+    global show_cursor
+
+hide_cursor:
+    push rdi
+    
+    mov rax, 1                      
+    mov rdi, 1                      
+    mov rsi, hide_cursor_code 
+    mov rdx, 6                
+    syscall                         
+
+    pop rdi
+    ret
+
+show_cursor:
+    push rdi
+    
+    mov rax, 1                      
+    mov rdi, 1                      
+    mov rsi, show_cursor_code 
+    mov rdx, 6                
+    syscall                         
+
+    pop rdi
+    ret
 
 reset_cursor:
     push rdi
