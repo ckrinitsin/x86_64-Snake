@@ -15,13 +15,11 @@ section .data
     ;   3
     ; 2 x 0
     ;   1
+    global direction
     direction db 0
 
     timespec dq 0 
              dq 500000000
-
-section .bss
-    buffer resb 1
 
 section .rodata
     ; width and height of the playable area
@@ -32,6 +30,7 @@ section .rodata
     height db 30
 
 section .text
+    extern input
     extern draw_border
     extern write_byte
     extern clear_screen
@@ -39,6 +38,7 @@ section .text
     extern move_cursor_right
     extern move_cursor_down
     global _start 
+    global exit
 
 draw_snake:
     push rbx
@@ -62,6 +62,30 @@ _11:call move_cursor_down
     call reset_cursor
     ret
 
+move_snake:
+    cmp byte [direction], 0
+    je _move_right
+    cmp byte [direction], 1
+    je _move_down
+    cmp byte [direction], 2
+    je _move_left
+    cmp byte [direction], 3
+    je _move_up
+    ret
+
+_move_right:
+    inc byte [snake]
+    ret
+_move_down:
+    inc byte [snake+1]
+    ret
+_move_left:
+    dec byte [snake]
+    ret
+_move_up:
+    dec byte [snake+1]
+    ret
+
 _start:
     mov byte [snake], 5
     mov byte [snake+1], 5
@@ -71,29 +95,15 @@ main_loop:
     call draw_border
     call draw_snake
 
-    lea rdi, [timespec]    ; Pointer to timespec struct (rdi)
-    xor rsi, rsi           ; NULL (no remaining time)
-    mov rax, 35            ; Syscall number for nanosleep
+    mov rax, 35            
+    lea rdi, [timespec]   
+    xor rsi, rsi           
     syscall
 
-    inc byte [snake]
+    call input
+    call move_snake
 
     jmp main_loop
-
-;    mov rax, 0           ; Syscall for read
-;    mov rdi, 0           ; stdin
-;    mov rsi, buffer      ; Address of the buffer
-;    mov rdx, 1           ; Read 1 byte
-;    syscall
-
-    ; If a key was pressed, store it in `input`
-;    test rax, rax        ; Check if any input was received
-;    jz exit         ; If no input, skip
-
-
-;    mov al, byte [buffer]; Load the input character
-    ;mov rax, 'x'
-;    call write_byte
 
 exit: ; exit syscall with return code 0
     mov rax, 60                     
