@@ -1,17 +1,5 @@
 section .data
 
-    ; cursor management
-    reset_cursor db 0x1B , '[H', 0
-    reset_cursor_len equ $ - reset_cursor
-    up_cursor db 0x1B , '[A', 0
-    up_cursor_len equ $ - up_cursor
-    bottom_cursor db 0x1B , '[B', 0
-    bottom_cursor_len equ $ - bottom_cursor
-    right_cursor db 0x1B , '[C', 0
-    right_cursor_len equ $ - right_cursor
-    left_cursor db 0x1B , '[D', 0
-    left_cursor_len equ $ - left_cursor
-
     ; example messages for later
     message1 db "Hello, World!", 0xA
     msg_len1 equ $ - message1          
@@ -19,7 +7,8 @@ section .data
     msg_len2 equ $ - message2
     
     ; array of snake - 1000 thousand bytes means max length is 500
-    ; head is at snake[0]
+    ; x head is at snake[0]
+    ; y head is at snake[1]
     snake TIMES 1000 db 0
 
     ; direction of the snake:
@@ -27,6 +16,9 @@ section .data
     ; 2 x 0
     ;   1
     direction db 0
+
+    timespec dq 0 
+             dq 500000000
 
 section .bss
     buffer resb 1
@@ -43,53 +35,65 @@ section .text
     extern draw_border
     extern write_byte
     extern clear_screen
+    extern reset_cursor
+    extern move_cursor_right
+    extern move_cursor_down
     global _start 
 
 draw_snake:
     push rbx
+    call reset_cursor
     mov bh, byte [snake]
     mov bl, byte [snake+1]
-_10:
+
+_10:call move_cursor_right
+    dec bh
+    cmp bh, 0
+    jnz _10
+_11:call move_cursor_down
+    dec bl
+    cmp bl, 0
+    jnz _11
+
+    mov rax, 'x'
+    call write_byte
 
     pop rbx
+    call reset_cursor
     ret
 
 _start:
-    call clear_screen
-    call draw_border
-
     mov byte [snake], 5
     mov byte [snake+1], 5
 
-    mov rax, 1                      
-    mov rdi, 1                      
-    mov rsi, reset_cursor                
-    mov rdx, reset_cursor_len                
-    syscall                         
-    mov rax, 1                      
-    mov rdi, 1                      
-    mov rsi, bottom_cursor                
-    mov rdx, bottom_cursor_len                
-    syscall                         
-    mov rax, 1                      
-    mov rdi, 1                      
-    mov rsi, right_cursor                
-    mov rdx, right_cursor_len                
-    syscall                         
+main_loop:
+    call clear_screen
+    call draw_border
+    call draw_snake
 
-    mov rax, 0           ; Syscall for read
-    mov rdi, 0           ; stdin
-    mov rsi, buffer      ; Address of the buffer
-    mov rdx, 1           ; Read 1 byte
+    lea rdi, [timespec]    ; Pointer to timespec struct (rdi)
+    xor rsi, rsi           ; NULL (no remaining time)
+    mov rax, 35            ; Syscall number for nanosleep
     syscall
 
-    ; If a key was pressed, store it in `input`
-    test rax, rax        ; Check if any input was received
-    jz exit         ; If no input, skip
-    mov al, byte [buffer]; Load the input character
+    inc byte [snake]
 
+    jmp main_loop
+
+;    mov rax, 0           ; Syscall for read
+;    mov rdi, 0           ; stdin
+;    mov rsi, buffer      ; Address of the buffer
+;    mov rdx, 1           ; Read 1 byte
+;    syscall
+
+    ; If a key was pressed, store it in `input`
+;    test rax, rax        ; Check if any input was received
+;    jz exit         ; If no input, skip
+
+
+;    mov al, byte [buffer]; Load the input character
     ;mov rax, 'x'
-    call write_byte
+;    call write_byte
 
 exit: ; exit syscall with return code 0
     mov rax, 60                     
