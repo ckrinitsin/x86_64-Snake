@@ -1,13 +1,9 @@
 section .data
 
-    ; example messages for later
-    message2 db "Hello 2!", 0xA  
-    msg_len2 equ $ - message2
-    
-    ; array of snake - 1000 thousand bytes means max length is 500
-    ; x head is at snake[0]
-    ; y head is at snake[1]
-    snake TIMES 250 db 0
+    ; array of snake - 500 bytes means max length is 250
+    ; x of i-th part is at snake[2*i]
+    ; y of i-th part is at snake[2*i+1]
+    snake times 500 db 0
     snake_length db 3
 
     ; direction of the snake:
@@ -17,7 +13,7 @@ section .data
     global direction
     direction db 0
 
-    ; delay of the game loop (0.5s in the beginning)
+    ; delay of the game loop (0.25s in the beginning)
     global timespec
     timespec dq 0 
              dq 250000000
@@ -236,7 +232,7 @@ _start:
     call start_screen
 
 _start_game:
-
+    ; set starting positions
     mov byte [snake], 5
     mov byte [snake+1], 5
     mov byte [snake+2], 4
