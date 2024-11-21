@@ -9,12 +9,8 @@ section .data
     ; array of snake - 1000 thousand bytes means max length is 500
     ; x head is at snake[0]
     ; y head is at snake[1]
-    snake TIMES 1000 db 0
-    snake_length dw 1
-
-    ; position of the fruit
-    fruit_x db 0
-    fruit_y db 0
+    snake TIMES 250 db 0
+    snake_length db 2
 
     ; direction of the snake:
     ;   3
@@ -23,6 +19,7 @@ section .data
     global direction
     direction db 0
 
+    ; delay of the game loop (0.5s in the beginning)
     timespec dq 0 
              dq 500000000
 
@@ -31,10 +28,14 @@ section .rodata
     ; (without the borders)
     global width
     global height
-    width db 70
-    height db 30
+    width db 25
+    height db 10
 
 section .text
+    extern fruit_x
+    extern fruit_y
+    extern spawn_fruit
+    extern draw_fruit
     extern input
     extern draw_border
     extern write_byte
@@ -49,27 +50,52 @@ section .text
 
 draw_snake:
     push rbx
-    call reset_cursor
-    mov bh, byte [snake]
-    mov bl, byte [snake+1]
+    ;;push r12
+    xor rdx, rdx
 
-_10:call move_cursor_right
+    push rdx
+    call reset_cursor
+    pop rdx
+
+_12:
+    mov bh, byte [snake+(2*rdx)]
+    mov bl, byte [snake+(2*rdx)+1]
+
+_10:push rdx
+    call move_cursor_right
+    pop rdx
     dec bh
     cmp bh, 0
     jnz _10
-_11:call move_cursor_down
+_11:push rdx
+    call move_cursor_down
+    pop rdx
     dec bl
     cmp bl, 0
     jnz _11
 
+    push rdx
     mov rax, 'x'
     call write_byte
-
-    pop rbx
     call reset_cursor
+    pop rdx
+
+    inc rdx
+    cmp dl, byte [snake_length]
+    jnz _12
+
+    ;;pop r12
+    pop rbx
     ret
 
 move_snake:
+    ;; TODO: loop this
+    mov ah, byte [snake]
+    mov al, byte [snake+1]
+    mov byte [snake+2], ah
+    mov byte [snake+3], al
+    ;;
+
     cmp byte [direction], 0
     je _move_right
     cmp byte [direction], 1
@@ -78,7 +104,7 @@ move_snake:
     je _move_left
     cmp byte [direction], 3
     je _move_up
-    ret
+    ret ; should not be accessed
 
 _move_right:
     inc byte [snake]
@@ -93,48 +119,29 @@ _move_up:
     dec byte [snake+1]
     ret
 
-fruit_position:
-
-    ; x position
-    rdtsc
-    shr ax, 5
-    div byte [width]
-    mov byte [fruit_x], ah
-;; TODO
-    rdtsc
-    shr ax, 5
-    div byte [height]
-    mov byte [fruit_y], ah
-
+check_eat_fruit:
+    mov ah, byte [fruit_x]
+    mov al, byte [fruit_y]
+    cmp byte [snake], ah 
+    jz _check_y
     ret
-
-draw_fruit:
-    push rbx
-    call reset_cursor
-    mov bh, byte [fruit_x]
-    mov bl, byte [fruit_y]
-
-_30:call move_cursor_right
-    dec bh
-    cmp bh, 0
-    jnz _30
-_31:call move_cursor_down
-    dec bl
-    cmp bl, 0
-    jnz _31
-
-    mov rax, '*'
-    call write_byte
-
-    pop rbx
-    call reset_cursor
+_check_y:
+    cmp byte [snake+1], al
+    jz _same_position
+    ret
+_same_position:
+    ; get longer
+    inc byte [snake_length]
+    call spawn_fruit
     ret
 
 _start:
     call hide_cursor
     mov byte [snake], 5
     mov byte [snake+1], 5
-    call fruit_position
+    mov byte [snake+2], 4
+    mov byte [snake+3], 5
+    call spawn_fruit 
 
 main_loop:
     call clear_screen
@@ -149,11 +156,13 @@ main_loop:
 
     call input
     call move_snake
+    call check_eat_fruit
 
     jmp main_loop
 
 exit: ; exit syscall with return code 0
     call show_cursor
+    call clear_screen
     mov rax, 60                     
     xor rdi, rdi                    
     syscall                         
