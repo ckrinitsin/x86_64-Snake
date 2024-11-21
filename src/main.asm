@@ -10,7 +10,7 @@ section .data
     ; x head is at snake[0]
     ; y head is at snake[1]
     snake TIMES 250 db 0
-    snake_length db 2
+    snake_length db 3
 
     ; direction of the snake:
     ;   3
@@ -47,6 +47,39 @@ section .text
     extern show_cursor
     global _start 
     global exit
+
+spawn_tail:
+    inc byte [snake_length]
+    xor rdx, rdx
+    mov dl, byte [snake_length]
+    mov ch, byte [snake+(2*rdx)-4]
+    mov cl, byte [snake+(2*rdx)-3]
+    mov byte [snake+(2*rdx)-2], ch
+    mov byte [snake+(2*rdx)-1], cl
+
+    mov ah, byte [direction]
+    cmp ah, 0
+    jz _spawn_left
+    cmp ah, 2
+    jz _spawn_right
+    cmp ah, 3
+    jz _spawn_down
+    cmp ah, 1
+    jz _spawn_up
+    ret ; should not reach this line
+
+_spawn_right:
+    inc byte [snake+(2*rdx)-2]
+    ret
+_spawn_down:
+    inc byte [snake+(2*rdx)-1]
+    ret
+_spawn_left:
+    dec byte [snake+(2*rdx)-2]
+    ret
+_spawn_up:
+    dec byte [snake+(2*rdx)-1]
+    ret
 
 draw_snake:
     push rbx
@@ -89,13 +122,21 @@ _11:push rdx
     ret
 
 move_snake:
-    ;; TODO: loop this
-    mov ah, byte [snake]
-    mov al, byte [snake+1]
-    mov byte [snake+2], ah
-    mov byte [snake+3], al
-    ;;
+    xor rdx, rdx
+    mov dl, byte [snake_length]
+_move_body:
+    cmp dl, 1
+    jz _move_head
 
+    mov ah, byte [snake+(2*rdx)-4]
+    mov al, byte [snake+(2*rdx)-3]
+    mov byte [snake+(2*rdx)-2], ah
+    mov byte [snake+(2*rdx)-1], al
+
+    dec dl
+    jmp _move_body
+
+_move_head:
     cmp byte [direction], 0
     je _move_right
     cmp byte [direction], 1
@@ -131,7 +172,7 @@ _check_y:
     ret
 _same_position:
     ; get longer
-    inc byte [snake_length]
+    call spawn_tail
     call spawn_fruit
     ret
 
@@ -141,6 +182,8 @@ _start:
     mov byte [snake+1], 5
     mov byte [snake+2], 4
     mov byte [snake+3], 5
+    mov byte [snake+4], 3
+    mov byte [snake+5], 5
     call spawn_fruit 
 
 main_loop:
