@@ -22,11 +22,14 @@ spawn_fruit:
     rdtsc
     shr ax, 5
     div byte [width]
+    inc ah
     mov byte [fruit_x], ah
-;; TODO
+
+    ; y position
     rdtsc
     shr ax, 5
     div byte [height]
+    inc ah
     mov byte [fruit_y], ah
 
     ret
@@ -46,7 +49,7 @@ _31:call move_cursor_down
     cmp bl, 0
     jnz _31
 
-    mov rax, '*'
+    mov rax, '-'
     call write_byte
 
     pop rbx

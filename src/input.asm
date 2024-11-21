@@ -3,8 +3,13 @@ section .bss
 
 section .text
     global input
+    global read_input
+    global start_screen
     extern direction
     extern exit
+    extern timespec
+    extern write_pause_message
+    extern write_start_message
 
 input:
     call read_input
@@ -12,7 +17,6 @@ input:
     ret
 
 handle_input:
-    mov al, byte [input_buffer]
     mov ah, byte [direction]
     cmp al, 'w'
     je _input_up
@@ -23,7 +27,11 @@ handle_input:
     cmp al, 'd'
     je _input_right
     cmp al, 27 ; escape
-    je exit
+    je _pause
+    ret
+_pause:
+    mov byte [input_buffer], 'w'
+    call pause
     ret
 
 _input_up:
@@ -61,4 +69,35 @@ read_input:
     mov rsi, input_buffer
     mov rdx, 250          
     syscall
+    mov al, byte [input_buffer]
+    ret
+
+pause:
+    call write_pause_message
+    mov rax, 35            
+    lea rdi, [timespec]   
+    xor rsi, rsi           
+    syscall
+
+    call read_input
+    cmp al, 'q'
+    je exit
+    cmp al, 27 ; esc
+    jne pause
+    mov byte [input_buffer], '0'
+    ret
+
+start_screen:
+    call write_start_message
+    mov rax, 35            
+    lea rdi, [timespec]   
+    xor rsi, rsi           
+    syscall
+
+    call read_input
+    cmp al, 'q'
+    je exit
+    cmp al, 32 ; space
+    jne start_screen
+    mov byte [input_buffer], '0'
     ret

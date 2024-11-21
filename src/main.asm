@@ -1,8 +1,6 @@
 section .data
 
     ; example messages for later
-    message1 db "Hello, World!", 0xA
-    msg_len1 equ $ - message1          
     message2 db "Hello 2!", 0xA  
     msg_len2 equ $ - message2
     
@@ -20,8 +18,9 @@ section .data
     direction db 0
 
     ; delay of the game loop (0.5s in the beginning)
+    global timespec
     timespec dq 0 
-             dq 500000000
+             dq 250000000
 
 section .rodata
     ; width and height of the playable area
@@ -32,6 +31,8 @@ section .rodata
     height db 10
 
 section .text
+    extern write_game_over_message
+    extern start_screen
     extern fruit_x
     extern fruit_y
     extern spawn_fruit
@@ -45,6 +46,7 @@ section .text
     extern move_cursor_down
     extern hide_cursor
     extern show_cursor
+    extern read_input
     global _start 
     global exit
 
@@ -108,7 +110,7 @@ _11:push rdx
     jnz _11
 
     push rdx
-    mov rax, 'x'
+    mov rax, 'X'
     call write_byte
     call reset_cursor
     pop rdx
@@ -137,6 +139,8 @@ _move_body:
     jmp _move_body
 
 _move_head:
+    mov ah, byte [width]
+    mov al, byte [height]
     cmp byte [direction], 0
     je _move_right
     cmp byte [direction], 1
@@ -148,16 +152,42 @@ _move_head:
     ret ; should not be accessed
 
 _move_right:
+    cmp byte [snake], ah
+    jz _to_left_border
     inc byte [snake]
     ret
 _move_down:
+    cmp byte [snake+1], al
+    jz _to_top_border
     inc byte [snake+1]
     ret
 _move_left:
+    cmp byte [snake], 1
+    jz _to_right_border
     dec byte [snake]
     ret
 _move_up:
+    cmp byte [snake+1], 1
+    jz _to_bottom_border
     dec byte [snake+1]
+    ret
+
+_to_left_border:
+    mov byte [snake], 1
+    ret
+
+_to_right_border:
+    mov al, byte [width]
+    mov byte [snake], al
+    ret
+
+_to_top_border:
+    mov byte [snake+1], 1
+    ret
+
+_to_bottom_border:
+    mov al, byte [height]
+    mov byte [snake+1], al
     ret
 
 check_eat_fruit:
@@ -176,14 +206,45 @@ _same_position:
     call spawn_fruit
     ret
 
+check_loose:
+    xor rcx, rcx
+    mov cl, byte [snake_length]
+    mov ah, byte [snake]
+    mov al, byte [snake+1]
+_loop_through_snake:
+    cmp rcx, 4 
+    jle _loop_return
+
+    mov dh, byte [snake+(2*rcx)-2]
+    mov dl, byte [snake+(2*rcx)-1]
+
+    dec rcx
+
+    cmp ah, dh
+    jnz _loop_through_snake
+    cmp al, dl
+    jnz _loop_through_snake
+    jmp game_over
+
+_loop_return:    
+    ret
+
 _start:
+    call clear_screen
+    call draw_border
     call hide_cursor
+    call start_screen
+
+_start_game:
+
     mov byte [snake], 5
     mov byte [snake+1], 5
     mov byte [snake+2], 4
     mov byte [snake+3], 5
     mov byte [snake+4], 3
     mov byte [snake+5], 5
+    mov byte [snake_length], 3
+    mov byte [direction], 0
     call spawn_fruit 
 
 main_loop:
@@ -199,9 +260,24 @@ main_loop:
 
     call input
     call move_snake
+    call check_loose
     call check_eat_fruit
 
     jmp main_loop
+
+game_over:
+    call write_game_over_message
+    mov rax, 35            
+    lea rdi, [timespec]   
+    xor rsi, rsi           
+    syscall
+
+    call read_input ; writes input byte into al
+    cmp al, 32 ; space
+    je _start_game
+    cmp al, 'q' ; escape
+    je exit
+    jmp game_over
 
 exit: ; exit syscall with return code 0
     call show_cursor

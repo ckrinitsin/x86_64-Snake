@@ -1,4 +1,12 @@
 section .data
+    ; messages
+    game_over_message db "gameover", 0xA, "space - retry", 0xA, "q - quit", 0xA
+    game_over_message_len equ $ - game_over_message
+    pause_message db "pause", 0xA, "esc - unpause", 0xA, "q - quit", 0xA
+    pause_message_len equ $ - pause_message
+    start_message db "snake", 0xA, "space - start", 0xA, "q - quit", 0xA
+    start_message_len equ $ - start_message
+
     ; escape code for clearing the screen
     clear db 0x1B, '[2J', 0x1B, '[H', 0
     clear_len equ $ - clear 
@@ -26,6 +34,10 @@ section .text
     global reset_cursor
     global hide_cursor
     global show_cursor
+    global write_game_over_message
+    global write_pause_message
+    global write_start_message
+    extern height
 
 hide_cursor:
     push rdi
@@ -95,6 +107,62 @@ write_byte:
     mov rdi, 1                      
     mov rsi, byte_to_write                
     mov rdx, 1                
+    syscall                         
+
+    pop rdi
+    ret
+
+cursor_to_message_position:
+    push rbx
+    call reset_cursor
+    mov bl, byte [height] 
+
+_loop_message:
+    call move_cursor_down
+    dec bl
+    cmp bl, -2
+    jne _loop_message
+    
+    pop rbx
+    ret
+
+write_game_over_message:
+    push rdi
+
+    call cursor_to_message_position
+
+    mov rax, 1                      
+    mov rdi, 1                      
+    mov rsi, game_over_message                
+    mov rdx, game_over_message_len                
+    syscall                         
+
+    pop rdi
+    ret
+
+write_pause_message:
+    push rdi
+
+    call cursor_to_message_position
+
+    mov rax, 1                      
+    mov rdi, 1                      
+    mov rsi, pause_message                
+    mov rdx, pause_message_len                
+    syscall                         
+
+    pop rdi
+    ret
+
+write_start_message:
+    push rdi
+
+    call cursor_to_message_position
+
+    mov rax, 1                      
+    mov rdi, 1                      
+    mov rsi, start_message                
+    mov rdx, start_message_len                
     syscall                         
 
     pop rdi
