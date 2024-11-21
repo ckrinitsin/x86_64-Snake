@@ -10,6 +10,11 @@ section .data
     ; x head is at snake[0]
     ; y head is at snake[1]
     snake TIMES 1000 db 0
+    snake_length dw 1
+
+    ; position of the fruit
+    fruit_x db 0
+    fruit_y db 0
 
     ; direction of the snake:
     ;   3
@@ -88,15 +93,54 @@ _move_up:
     dec byte [snake+1]
     ret
 
+fruit_position:
+
+    ; x position
+    rdtsc
+    shr ax, 5
+    div byte [width]
+    mov byte [fruit_x], ah
+;; TODO
+    rdtsc
+    shr ax, 5
+    div byte [height]
+    mov byte [fruit_y], ah
+
+    ret
+
+draw_fruit:
+    push rbx
+    call reset_cursor
+    mov bh, byte [fruit_x]
+    mov bl, byte [fruit_y]
+
+_30:call move_cursor_right
+    dec bh
+    cmp bh, 0
+    jnz _30
+_31:call move_cursor_down
+    dec bl
+    cmp bl, 0
+    jnz _31
+
+    mov rax, '*'
+    call write_byte
+
+    pop rbx
+    call reset_cursor
+    ret
+
 _start:
     call hide_cursor
     mov byte [snake], 5
     mov byte [snake+1], 5
+    call fruit_position
 
 main_loop:
     call clear_screen
     call draw_border
     call draw_snake
+    call draw_fruit
 
     mov rax, 35            
     lea rdi, [timespec]   
