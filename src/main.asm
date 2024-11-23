@@ -43,6 +43,8 @@ section .text
     extern hide_cursor
     extern show_cursor
     extern read_input
+    extern set_terminal_options
+    extern restore_terminal_options
     global _start 
     global exit
 
@@ -226,6 +228,7 @@ _loop_return:
     ret
 
 _start:
+    call set_terminal_options
     call clear_screen
     call draw_border
     call hide_cursor
@@ -278,6 +281,7 @@ game_over:
 exit: ; exit syscall with return code 0
     call show_cursor
     call clear_screen
+    call restore_terminal_options
     mov rax, 60                     
     xor rdi, rdi                    
     syscall                         
