@@ -22,6 +22,14 @@ section .data
     hide_cursor_code db 0x1B, '[', '?', '2', '5', 'l', 0  ; Escape sequence to hide the cursor
     show_cursor_code db 0x1B, '[', '?', '2', '5', 'h', 0  ; Escape sequence to show the cursor
 
+    ; termios struct for ioctl
+    termios dd 0            ; c_iflag
+            dd 0            ; c_oflag
+            dd 0            ; c_cflag
+    c_lflag dd 0            ; c_lflag
+            db 0            ; c_lin
+    c_cc    times 19 db 0   ; c_cc
+
 section .bss
     ; adress for syscall for write_byte wrapper
     byte_to_write resb 1
@@ -37,7 +45,49 @@ section .text
     global write_game_over_message
     global write_pause_message
     global write_start_message
+    global set_terminal_options
+    global restore_terminal_options
     extern height
+
+set_terminal_options:
+    ; get current termios struct
+    mov rax, 0x10   ; ioctl
+    mov rdi, 0      ; stdin
+    mov rsi, 0x5401 ; TCGETS
+    lea rdx, [termios]
+    syscall
+
+    ; unset ECHO and ICANON flags
+    mov ebx, [c_lflag]
+    and ebx, 0xFFFFFFF5 ; ~(ICANON | ECHO)
+    xchg ebx, [c_lflag] ; exchange to store previous value
+
+    ; set MIN control character to 0 and store previous value
+    mov r12b, 0
+    xchg r12b, [c_cc + 6]
+
+    ; set the updated values
+    mov rax, 0x10   ; ioctl
+    mov rdi, 0      ; stdin
+    mov rsi, 0x5402 ; TCSETS
+    lea rdx, [termios]
+    syscall
+
+    ; write old values to memory to later restore the previous settings
+    mov [c_lflag], ebx
+    mov [c_cc + 6], r12b
+
+    ret
+
+restore_terminal_options:
+    ; restore the previously saved termios
+    mov rax, 0x10   ; ioctl
+    mov rdi, 0      ; stdin
+    mov rsi, 0x5402 ; TCSETS
+    lea rdx, [termios]
+    syscall
+
+    ret
 
 hide_cursor:
     push rdi
