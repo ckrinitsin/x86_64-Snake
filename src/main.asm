@@ -18,6 +18,11 @@ section .data
     timespec dq 0 
              dq 250000000
 
+    sigaction dq 0  ; sa_handler
+              dq 0  ; sa_flags
+              dq 0  ; sa_restorer
+              dq 0  ; sa_mask
+
 section .rodata
     ; width and height of the playable area
     ; (without the borders)
@@ -227,8 +232,24 @@ _loop_through_snake:
 _loop_return:    
     ret
 
+_set_interrupt_handler:
+    ; set sa_handler and sa_flags
+    lea rax, [exit]
+    mov [sigaction], rax
+    mov qword [sigaction + 8], 0x04000000 ; SA_RESTORER
+
+    mov rax, 0xD    ; rt_sigaction
+    mov rdi, 2      ; SIGINT
+    lea rsi, [sigaction]
+    xor rdx, rdx
+    mov r10, 8      ; sizeof(sigset_t)
+    syscall
+
+    ret
+
 _start:
     call set_terminal_options
+    call _set_interrupt_handler
     call clear_screen
     call draw_border
     call hide_cursor
